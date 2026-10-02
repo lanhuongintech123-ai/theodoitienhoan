@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Cashback Hub - Quản Lý Thẻ & Sao Lưu Dữ Liệu</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --emerald: #059669;
+      --emerald-light: #ecfdf5;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --rose: #e11d48;
+      --rose-light: #fff1f2;
+      --font-main: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      padding: 28px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .top-bar h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    .top-bar p { color: var(--text-muted); font-size: 13.5px; margin-top: 4px; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* 4 Widget Dashboard */
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    @media (max-width: 800px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .summary-grid { grid-template-columns: 1fr; } }
+    
+    .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .stat-card .label { font-size: 12.5px; color: var(--text-muted); font-weight: 600; }
+    .stat-card .value { font-family: var(--font-mono); font-size: 20px; font-weight: 800; margin-top: 6px; }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    }
+    .panel h2 { font-size: 17px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+    .form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 768px) { .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; } }
+
+    label { font-size: 12.5px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; display: block; }
+    input, select {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+    input[type="number"] { font-family: var(--font-mono); font-weight: 600; }
+
+    .purpose-selector { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+    .purpose-option {
+      flex: 1;
+      min-width: 160px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .purpose-option input { width: auto; cursor: pointer; accent-color: var(--primary); }
+
+    .fee-input-wrap {
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: #fffbeb;
+      border: 1px dashed #fcd34d;
+      border-radius: 8px;
+      display: none;
+      align-items: center;
+      gap: 14px;
+    }
+    .fee-input-wrap label { margin-bottom: 0; color: #92400e; font-size: 13px; }
+    .fee-input-wrap input { width: 100px; padding: 6px 10px; background: #fff; }
+
+    .live-calc-box {
+      margin-top: 14px;
+      padding: 14px 18px;
+      background: var(--emerald-light);
+      border: 1px solid #a7f3d0;
+      border-radius: 10px;
+      font-size: 13.5px;
+      display: none;
+      line-height: 1.6;
+    }
+    .mono-hl { font-family: var(--font-mono); font-weight: 700; color: var(--emerald); }
+    .mono-blue { font-family: var(--font-mono); font-weight: 700; color: var(--primary); }
+    .mono-rose { font-family: var(--font-mono); font-weight: 700; color: var(--rose); }
+
+    .btn { padding: 9px 14px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger-outline { background: transparent; border: 1px solid #fecdd3; color: var(--rose); font-size: 12px; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+    .btn-danger-outline:hover { background: var(--rose-light); }
+
+    .cards-deck { display: flex; flex-direction: column; gap: 18px; margin-bottom: 30px; }
+    .card-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 22px;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    @media (max-width: 800px) { .card-item { grid-template-columns: 1fr; gap: 16px; } }
+
+    .card-mini {
+      border-radius: 12px;
+      height: 145px;
+      padding: 14px 16px;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .card-mini-top { display: flex; justify-content: space-between; align-items: center; }
+    .card-chip { width: 30px; height: 22px; background: #fbbf24; border-radius: 4px; }
+    .card-brand { font-size: 11px; font-weight: 800; letter-spacing: 1px; }
+    .card-title { font-size: 14.5px; font-weight: 700; }
+    .card-rule-tag { font-size: 11px; opacity: 0.9; }
+    .card-stmt-day { font-size: 11px; font-weight: 600; font-family: var(--font-mono); }
+
+    .card-content { flex: 1; }
+    .card-content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px; }
+    
+    .badge { font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+    .badge-ok { background: var(--emerald-light); color: var(--emerald); border: 1px solid #a7f3d0; }
+    .badge-wait { background: var(--amber-light); color: var(--amber); border: 1px solid #fde68a; }
+    .badge-full { background: var(--rose-light); color: var(--rose); border: 1px solid #fecdd3; }
+    .badge-urgent { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+
+    .meter-group { margin-bottom: 12px; }
+    .meter-label { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px; }
+    .meter-label span:first-child { color: var(--text-muted); }
+    .meter-label span:last-child { font-family: var(--font-mono); font-weight: 700; }
+
+    .bar-bg { background: #f1f5f9; height: 8px; border-radius: 999px; overflow: hidden; }
+    .bar-fill { height: 100%; transition: width 0.3s ease; }
+    .fill-blue { background: #3b82f6; }
+    .fill-amber { background: #f59e0b; }
+    .fill-green { background: #10b981; }
+
+    .card-footer {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .history-table th { text-align: left; padding: 10px 12px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); background: #f8fafc; }
+    .history-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+    .mono { font-family: var(--font-mono); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <div class="top-bar">
+      <div>
+        <h1>Quản Lý Chi Tiêu & Hoàn Tiền Thẻ Tín Dụng</h1>
+        <p>Cộng dồn 100% doanh số quẹt bill, tính phí bán lại & khôi phục dữ liệu an toàn</p>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="exportBackupData()">💾 Sao lưu file (Export)</button>
+        <button class="btn btn-secondary" onclick="triggerRestore()">📂 Khôi phục file (Import)</button>
+        <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="handleRestoreFile(event)">
+        <button class="btn btn-secondary" onclick="toggleCardConfig()">⚙️ Cấu hình thẻ</button>
+        <button class="btn btn-secondary" onclick="resetCycle()">↺ Reset chu kỳ</button>
+      </div>
+    </div>
+
+    <!-- 4 Khối Thống Kê Tổng Quan -->
+    <div class="summary-grid">
+      <div class="stat-card">
+        <div class="label">Tổng tiền quẹt thẻ</div>
+        <div class="value" style="color: var(--primary);" id="statTotalSpend">0 ₫</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Tổng hoàn tiền (Gross)</div>
+        <div class="value" style="color: var(--emerald);" id="statTotalCashback">0 ₫</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Tổng phí bán lại chịu lỗ</div>
+        <div class="value" style="color: var(--rose);" id="statTotalFee">0 ₫</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Lợi nhuận ròng thu về</div>
+        <div class="value" style="color: #0f172a;" id="statNetProfit">0 ₫</div>
+      </div>
+    </div>
+
+    <!-- Panel Nhập Chi Tiêu -->
+    <div class="panel">
+      <h2>+ Nhập Giao Dịch Mới</h2>
+      <div class="form-grid-2">
+        <div>
+          <label>Chọn thẻ quẹt:</label>
+          <select id="txCardSelect" onchange="calcLivePreview()"></select>
+        </div>
+        <div>
+          <label>Số tiền quẹt bill (VNĐ):</label>
+          <input type="number" id="txAmount" placeholder="Ví dụ: 300000" step="10000" oninput="calcLivePreview()">
+        </div>
+      </div>
+
+      <div class="purpose-selector">
+        <label class="purpose-option">
+          <input type="radio" name="txType" value="personal" checked onchange="handleTypeChange()">
+          <span>🛍️ Mua cho tôi (Không mất phí)</span>
+        </label>
+        <label class="purpose-option">
+          <input type="radio" name="txType" value="resell" onchange="handleTypeChange()">
+          <span>🔄 Mua đi bán lại (Chịu phí chiết khấu)</span>
+        </label>
+        <label class="purpose-option">
+          <input type="radio" name="txType" value="filler" onchange="handleTypeChange()">
+          <span>🎯 Chỉ quẹt bù đủ mốc (0đ hoàn)</span>
+        </label>
+      </div>
+
+      <div id="resellFeeBox" class="fee-input-wrap">
+        <label for="resellFeePct"><b>Nhập mức phí bán lại chịu chiết khấu (%):</b></label>
+        <input type="number" id="resellFeePct" value="2.2" step="0.1" min="0" oninput="calcLivePreview()">
+        <span style="font-size: 12.5px; color: #78350f;">(VD: 2% hoặc 2.5% tuỳ món đồ)</span>
+      </div>
+
+      <div id="liveCalc" class="live-calc-box"></div>
+
+      <button class="btn btn-primary" style="width: 100%; margin-top: 14px;" onclick="recordExpense()">Lưu Giao Dịch</button>
+    </div>
+
+    <!-- Panel Thêm Thẻ Mới -->
+    <div class="panel" id="cardConfigPanel" style="display: none; background: #fafafa; border-style: dashed;">
+      <h2>
+        <span>⚙️ Thêm Thẻ Mới Vào Danh Sách</span>
+        <button class="btn btn-secondary" style="font-size: 12px; padding: 3px 8px;" onclick="toggleCardConfig()">Đóng</button>
+      </h2>
+      <div class="form-grid-3">
+        <div>
+          <label>Tên thẻ tín dụng:</label>
+          <input type="text" id="cfgName" placeholder="VD: VIB Online Plus, VPBank StepUp...">
+        </div>
+        <div>
+          <label>Mạng thẻ:</label>
+          <select id="cfgBrand">
+            <option value="VISA">VISA</option>
+            <option value="MASTERCARD">MASTERCARD</option>
+            <option value="JCB">JCB</option>
+            <option value="NAPAS">NAPAS</option>
+          </select>
+        </div>
+        <div>
+          <label>Ngày sao kê hàng tháng:</label>
+          <input type="number" id="cfgStmtDay" placeholder="Ví dụ: 20 (ngày 20)" min="1" max="31">
+        </div>
+      </div>
+
+      <div class="form-grid-3" style="margin-top: 12px;">
+        <div>
+          <label>Mốc chi tiêu tối thiểu tháng (VNĐ):</label>
+          <input type="number" id="cfgMinSpend" placeholder="VD: 3000000" step="500000">
+        </div>
+        <div>
+          <label>Trần hoàn tiền tối đa tháng (VNĐ):</label>
+          <input type="number" id="cfgMonthlyCap" placeholder="VD: 500000" step="50000">
+        </div>
+        <div>
+          <label>Quy tắc tính hoàn tiền:</label>
+          <select id="cfgRuleType" onchange="toggleRuleInput()">
+            <option value="standard_percent">Thẻ thông thường (% cố định không chặn bill)</option>
+            <option value="cake_vpbank">VPBank Cake Freedom (Trần 10k < 200k, 50k ≥ 200k)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="fixedRateWrap" style="margin-top: 12px; max-width: 320px;">
+        <label>Mức hoàn % của thẻ (Ví dụ: 6, 8, 10%):</label>
+        <input type="number" id="cfgRate" placeholder="Ví dụ: 6" step="0.5">
+      </div>
+
+      <button class="btn btn-primary" style="margin-top: 16px;" onclick="addNewCard()">+ Lưu Thẻ Này Vào Danh Sách</button>
+    </div>
+
+    <!-- Danh Sách Thẻ Tín Dụng Hiện Tại -->
+    <div class="cards-deck" id="cardsContainer"></div>
+
+    <!-- Lịch Sử Giao Dịch -->
+    <div class="panel">
+      <h2>Lịch Sử Giao Dịch Chu Kỳ Này</h2>
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Thẻ</th>
+            <th>Loại GD</th>
+            <th>Tiền quẹt bill</th>
+            <th>Hoàn tiền (Gross)</th>
+            <th>Phí bán lại</th>
+            <th>Lời ròng</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    const defaultCards = [
+      {
+        id: "cake_vpbank",
+        name: "VPBank Cake Freedom",
+        brand: "VISA",
+        color: "linear-gradient(135deg, #059669, #065f46)",
+        statementDay: 20,
+        minSpend: 2000000,
+        monthlyCap: 300000,
+        currentSpend: 1350000,
+        currentCashback: 110000,
+        currentFees: 0,
+        ruleType: "cake_vpbank",
+        rate: 20,
+        ruleDesc: "20% (Chặn 10k < 200k | 50k ≥ 200k)"
+      },
+      {
+        id: "vib_online",
+        name: "VIB Online Plus 2in1",
+        brand: "MASTERCARD",
+        color: "linear-gradient(135deg, #2563eb, #1e3a8a)",
+        statementDay: 15,
+        minSpend: 3000000,
+        monthlyCap: 600000,
+        currentSpend: 3100000,
+        currentCashback: 186000,
+        currentFees: 0,
+        ruleType: "standard_percent",
+        rate: 6,
+        ruleDesc: "Hoàn 6% Online (Max 600k/tháng)"
+      },
+      {
+        id: "hsbc_live",
+        name: "HSBC Live+",
+        brand: "VISA",
+        color: "linear-gradient(135deg, #dc2626, #991b1b)",
+        statementDay: 25,
+        minSpend: 6000000,
+        monthlyCap: 500000,
+        currentSpend: 2500000,
+        currentCashback: 150000,
+        currentFees: 0,
+        ruleType: "standard_percent",
+        rate: 8,
+        ruleDesc: "Hoàn 8% Ăn uống & Siêu thị"
+      }
+    ];
+
+    let cards = JSON.parse(localStorage.getItem('cards_data_master_v8')) || defaultCards;
+    let historyList = JSON.parse(localStorage.getItem('cards_history_master_v8')) || [];
+
+    function saveState() {
+      localStorage.setItem('cards_data_master_v8', JSON.stringify(cards));
+      localStorage.setItem('cards_history_master_v8', JSON.stringify(historyList));
+      render();
+    }
+
+    // ==========================================
+    // TÍNH NĂNG SAO LƯU & KHÔI PHỤC DỮ LIỆU
+    // ==========================================
+    function exportBackupData() {
+      const dataToExport = {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        cards: cards,
+        history: historyList
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `cashback_backup_${dateStr}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function triggerRestore() {
+      document.getElementById('restoreFileInput').click();
+    }
+
+    function handleRestoreFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (!importedData.cards || !Array.isArray(importedData.cards)) {
+            alert("File sao lưu không hợp lệ hoặc bị hỏng định dạng!");
+            return;
+          }
+
+          if (confirm(`Tìm thấy dữ liệu ngày ${importedData.exportDate ? new Date(importedData.exportDate).toLocaleDateString('vi-VN') : ''} gồm ${importedData.cards.length} thẻ. Bạn có muốn khôi phục và ghi đè dữ liệu hiện tại không?`)) {
+            cards = importedData.cards;
+            historyList = importedData.history || [];
+            saveState();
+            alert("Khôi phục dữ liệu thành công 100%!");
+          }
+        } catch (err) {
+          alert("Lỗi khi đọc file sao lưu: " + err.message);
+        }
+        event.target.value = ''; // Reset input file
+      };
+      reader.readAsText(file);
+    }
+
+    // ==========================================
+    // LOGIC TÍNH TOÁN & THEO DÕI
+    // ==========================================
+    function getDaysUntilStatement(statementDay) {
+      const today = new Date();
+      const currentDay = today.getDate();
+      let days = statementDay - currentDay;
+      if (days < 0) {
+        const lastDayOfCurMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        days = (lastDayOfCurMonth - currentDay) + statementDay;
+      }
+      return days;
+    }
+
+    function handleTypeChange() {
+      const type = document.querySelector('input[name="txType"]:checked').value;
+      document.getElementById('resellFeeBox').style.display = (type === 'resell') ? 'flex' : 'none';
+      calcLivePreview();
+    }
+
+    function calculateCashback(card, amount, isFiller) {
+      if (isFiller || amount <= 0) {
+        return { reward: 0, note: "Quẹt bù đủ mốc (0đ hoàn)" };
+      }
+
+      if (card.ruleType === "cake_vpbank") {
+        const raw = amount * 0.20;
+        if (amount < 200000) {
+          const actual = Math.min(raw, 10000);
+          return { reward: actual, note: raw > 10000 ? "Chặn 10k (< 200k)" : "20% đầy đủ" };
+        } else {
+          const actual = Math.min(raw, 50000);
+          return { reward: actual, note: raw > 50000 ? "Chặn 50k (≥ 200k)" : "20% đầy đủ" };
+        }
+      }
+
+      const ratePct = (card.rate || 0) / 100;
+      return { reward: amount * ratePct, note: `Hoàn ${card.rate}%` };
+    }
+
+    function calcLivePreview() {
+      const cardId = document.getElementById('txCardSelect').value;
+      const amount = parseFloat(document.getElementById('txAmount').value);
+      const txType = document.querySelector('input[name="txType"]:checked').value;
+      const feePct = parseFloat(document.getElementById('resellFeePct').value) || 0;
+      const liveBox = document.getElementById('liveCalc');
+
+      if (!amount || amount <= 0) {
+        liveBox.style.display = 'none';
+        return;
+      }
+
+      const card = cards.find(c => c.id === cardId);
+      const res = calculateCashback(card, amount, txType === 'filler');
+      const remainingMonthly = Math.max(0, card.monthlyCap - card.currentCashback);
+      const actualCashback = Math.min(res.reward, remainingMonthly);
+
+      let resellFee = 0;
+      if (txType === 'resell') {
+        resellFee = amount * (feePct / 100);
+      }
+      const netProfit = actualCashback - resellFee;
+
+      liveBox.style.display = 'block';
+      liveBox.innerHTML = `
+        <div>• <b>Cộng tổng chi tiêu thẻ:</b> <span class="mono-blue">+${amount.toLocaleString()} ₫</span> (luôn tính đủ 100%)</div>
+        <div>• <b>Hoàn tiền ngân hàng trả:</b> <span class="mono-hl">+${Math.round(actualCashback).toLocaleString()} ₫</span> (${res.note})</div>
+        ${txType === 'resell' ? `<div>• <b>Phí bán lại chịu lỗ (${feePct}%):</b> <span class="mono-rose">-${Math.round(resellFee).toLocaleString()} ₫</span></div>` : ''}
+        <div style="margin-top:4px; padding-top:4px; border-top:1px dashed #cbd5e1;">
+          ➔ <b>Lợi nhuận ròng:</b> 
+          <span style="font-family:var(--font-mono); font-weight:800; color:${netProfit >= 0 ? 'var(--emerald)' : 'var(--rose)'};">
+            ${netProfit >= 0 ? '+' : ''}${Math.round(netProfit).toLocaleString()} ₫
+          </span>
+          ${netProfit < 0 ? '<span style="font-size:12px; color:var(--text-muted);"> (Chấp nhận tốn phí để cày mốc doanh số thẻ)</span>' : '<span style="font-size:12px; color:var(--emerald);"> (Lời ròng sau khi trừ phí bán)</span>'}
+        </div>
+      `;
+    }
+
+    function recordExpense() {
+      const cardId = document.getElementById('txCardSelect').value;
+      const amount = parseFloat(document.getElementById('txAmount').value);
+      const txType = document.querySelector('input[name="txType"]:checked').value;
+      const feePct = parseFloat(document.getElementById('resellFeePct').value) || 0;
+
+      if (!amount || amount <= 0) {
+        alert("Vui lòng nhập số tiền quẹt bill hợp lệ!");
+        return;
+      }
+
+      const card = cards.find(c => c.id === cardId);
+      if (!card) return;
+
+      card.currentSpend += amount;
+
+      const res = calculateCashback(card, amount, txType === 'filler');
+      const remainingMonthly = Math.max(0, card.monthlyCap - card.currentCashback);
+      const actualCashback = Math.min(res.reward, remainingMonthly);
+      card.currentCashback += actualCashback;
+
+      let feeAmount = 0;
+      if (txType === 'resell') {
+        feeAmount = Math.round(amount * (feePct / 100));
+        card.currentFees = (card.currentFees || 0) + feeAmount;
+      }
+
+      const net = Math.round(actualCashback - feeAmount);
+
+      let typeTag = "Cá nhân";
+      if (txType === 'resell') typeTag = `Bán lại (-${feePct}%)`;
+      if (txType === 'filler') typeTag = "Quẹt bù mốc";
+
+      historyList.unshift({
+        cardName: card.name,
+        typeTag: typeTag,
+        amount: amount,
+        cashback: Math.round(actualCashback),
+        fee: feeAmount,
+        net: net
+      });
+      if (historyList.length > 10) historyList.pop();
+
+      document.getElementById('txAmount').value = '';
+      document.getElementById('liveCalc').style.display = 'none';
+
+      saveState();
+    }
+
+    function toggleCardConfig() {
+      const panel = document.getElementById('cardConfigPanel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleRuleInput() {
+      const type = document.getElementById('cfgRuleType').value;
+      document.getElementById('fixedRateWrap').style.display = (type === 'standard_percent') ? 'block' : 'none';
+    }
+
+    function addNewCard() {
+      const name = document.getElementById('cfgName').value.trim();
+      const brand = document.getElementById('cfgBrand').value;
+      const stmtDay = parseInt(document.getElementById('cfgStmtDay').value);
+      const minSpend = parseFloat(document.getElementById('cfgMinSpend').value);
+      const monthlyCap = parseFloat(document.getElementById('cfgMonthlyCap').value);
+      const ruleType = document.getElementById('cfgRuleType').value;
+      const rate = parseFloat(document.getElementById('cfgRate').value) || 0;
+
+      if (!name || !stmtDay || !minSpend || !monthlyCap) {
+        alert("Vui lòng điền đủ thông tin!");
+        return;
+      }
+
+      const colors = [
+        "linear-gradient(135deg, #2563eb, #1e3a8a)",
+        "linear-gradient(135deg, #059669, #065f46)",
+        "linear-gradient(135deg, #7c3aed, #4c1d95)",
+        "linear-gradient(135deg, #ea580c, #7c2d12)",
+        "linear-gradient(135deg, #0891b2, #164e63)"
+      ];
+
+      const newCard = {
+        id: "card_" + Date.now(),
+        name: name,
+        brand: brand,
+        color: colors[cards.length % colors.length],
+        statementDay: stmtDay,
+        minSpend: minSpend,
+        monthlyCap: monthlyCap,
+        currentSpend: 0,
+        currentCashback: 0,
+        currentFees: 0,
+        ruleType: ruleType,
+        rate: ruleType === 'cake_vpbank' ? 20 : rate,
+        ruleDesc: ruleType === 'cake_vpbank' 
+          ? "20% (Chặn 10k < 200k | 50k ≥ 200k)" 
+          : `Hoàn ${rate}% (Max ${monthlyCap.toLocaleString()} ₫/tháng)`
+      };
+
+      cards.push(newCard);
+      toggleCardConfig();
+      saveState();
+
+      document.getElementById('cfgName').value = '';
+      document.getElementById('cfgStmtDay').value = '';
+      document.getElementById('cfgMinSpend').value = '';
+      document.getElementById('cfgMonthlyCap').value = '';
+      document.getElementById('cfgRate').value = '';
+    }
+
+    function deleteCard(id) {
+      if (confirm("Xóa thẻ này khỏi danh sách theo dõi?")) {
+        cards = cards.filter(c => c.id !== id);
+        saveState();
+      }
+    }
+
+    function render() {
+      const sel = document.getElementById('txCardSelect');
+      sel.innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+      const totalSpend = cards.reduce((sum, c) => sum + c.currentSpend, 0);
+      const totalCashback = cards.reduce((sum, c) => sum + c.currentCashback, 0);
+      const totalFees = cards.reduce((sum, c) => sum + (c.currentFees || 0), 0);
+      const netProfit = totalCashback - totalFees;
+
+      document.getElementById('statTotalSpend').innerText = totalSpend.toLocaleString() + ' ₫';
+      document.getElementById('statTotalCashback').innerText = Math.round(totalCashback).toLocaleString() + ' ₫';
+      document.getElementById('statTotalFee').innerText = Math.round(totalFees).toLocaleString() + ' ₫';
+      
+      const elNet = document.getElementById('statNetProfit');
+      elNet.innerText = (netProfit >= 0 ? '+' : '') + Math.round(netProfit).toLocaleString() + ' ₫';
+      elNet.style.color = netProfit >= 0 ? 'var(--emerald)' : 'var(--rose)';
+
+      const container = document.getElementById('cardsContainer');
+      container.innerHTML = cards.map(c => {
+        const spendPct = Math.min(100, Math.round((c.currentSpend / c.minSpend) * 100));
+        const capPct = Math.min(100, Math.round((c.currentCashback / c.monthlyCap) * 100));
+        const isMinMet = c.currentSpend >= c.minSpend;
+        const isCapMet = c.currentCashback >= c.monthlyCap;
+        const daysLeft = getDaysUntilStatement(c.statementDay);
+
+        let badge = `<span class="badge badge-wait">⏳ Chưa đủ mốc tối thiểu</span>`;
+        if (isCapMet) {
+          badge = `<span class="badge badge-full">🛑 Đã chạm trần hoàn tiền</span>`;
+        } else if (isMinMet) {
+          badge = `<span class="badge badge-ok">✓ Đã đủ mốc kích hoạt</span>`;
+        } else if (daysLeft <= 4) {
+          badge = `<span class="badge badge-urgent">🔥 Còn ${daysLeft} ngày chốt sổ!</span>`;
+        }
+
+        return `
+          <div class="card-item">
+            <div class="card-mini" style="background: ${c.color};">
+              <div class="card-mini-top">
+                <div class="card-chip"></div>
+                <div class="card-brand">${c.brand}</div>
+              </div>
+              <div>
+                <div class="card-title">${c.name}</div>
+                <div class="card-rule-tag">${c.ruleDesc}</div>
+              </div>
+              <div class="card-stmt-day">Sao kê: Ngày ${c.statementDay} hàng tháng</div>
+            </div>
+
+            <div class="card-content">
+              <div class="card-content-header">
+                <div style="font-size: 13px; font-weight: 600; color: ${daysLeft <= 4 && !isMinMet ? 'var(--rose)' : 'var(--text-muted)'};">
+                  🗓️ Còn <b>${daysLeft} ngày</b> nữa chốt sao kê
+                </div>
+                ${badge}
+              </div>
+
+              <!-- Thanh tổng chi tiêu -->
+              <div class="meter-group">
+                <div class="meter-label">
+                  <span>Tổng tiền đã quẹt (${spendPct}%)</span>
+                  <span>${c.currentSpend.toLocaleString()} ₫ / <span style="color:var(--text-muted)">${c.minSpend.toLocaleString()} ₫</span></span>
+                </div>
+                <div class="bar-bg">
+                  <div class="bar-fill ${isMinMet ? 'fill-blue' : 'fill-amber'}" style="width: ${spendPct}%;"></div>
+                </div>
+              </div>
+
+              <!-- Thanh tiền hoàn tích lũy -->
+              <div class="meter-group">
+                <div class="meter-label">
+                  <span>Tiền hoàn tích lũy (${capPct}%)</span>
+                  <span style="color: var(--emerald);">${Math.round(c.currentCashback).toLocaleString()} ₫ / <span style="color:var(--text-muted)">${c.monthlyCap.toLocaleString()} ₫</span></span>
+                </div>
+                <div class="bar-bg">
+                  <div class="bar-fill fill-green" style="width: ${capPct}%;"></div>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <div>
+                  ${!isMinMet 
+                    ? `⚡ Cần quẹt thêm <b>${(c.minSpend - c.currentSpend).toLocaleString()} ₫</b> nữa để đủ điều kiện nhận hoàn.`
+                    : isCapMet 
+                      ? `🛑 <b>Đã gom đủ trần ${c.monthlyCap.toLocaleString()} ₫!</b> Hãy chuyển bill sang thẻ khác.`
+                      : `✨ Còn có thể gom thêm tối đa <b>${(c.monthlyCap - c.currentCashback).toLocaleString()} ₫</b> hoàn tiền.`
+                  }
+                </div>
+                <button class="btn-danger-outline" onclick="deleteCard('${c.id}')">Xóa thẻ</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const tbody = document.getElementById('historyBody');
+      if (historyList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:16px;">Chưa có giao dịch nào được ghi nhận.</td></tr>`;
+      } else {
+        tbody.innerHTML = historyList.map(h => `
+          <tr>
+            <td><strong>${h.cardName}</strong></td>
+            <td><span style="font-size:12px; color:var(--text-muted);">${h.typeTag}</span></td>
+            <td class="mono">${h.amount.toLocaleString()} ₫</td>
+            <td class="mono" style="color:var(--emerald); font-weight:700;">+${h.cashback.toLocaleString()} ₫</td>
+            <td class="mono" style="color:var(--rose); font-weight:600;">${h.fee > 0 ? '-' + h.fee.toLocaleString() + ' ₫' : '0 ₫'}</td>
+            <td class="mono" style="font-weight:800; color:${h.net >= 0 ? 'var(--emerald)' : 'var(--rose)'};">${h.net >= 0 ? '+' : ''}${h.net.toLocaleString()} ₫</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function resetCycle() {
+      if (confirm("Reset chi tiêu, tiền hoàn và phí về 0 cho chu kỳ tháng mới? (Nên bấm Sao lưu file trước khi reset)")) {
+        cards.forEach(c => {
+          c.currentSpend = 0;
+          c.currentCashback = 0;
+          c.currentFees = 0;
+        });
+        historyList = [];
+        saveState();
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
