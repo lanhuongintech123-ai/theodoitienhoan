@@ -43,8 +43,8 @@
     .top-bar p { color: var(--text-muted); font-size: 13.5px; margin-top: 4px; }
     .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
 
-    /* Summary Bar Filter Header */
-    .summary-filter-header {
+    /* Scope Header for Dashboard Stats */
+    .dashboard-scope-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -52,25 +52,26 @@
       flex-wrap: wrap;
       gap: 10px;
     }
-    .summary-filter-header .title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-    .summary-filter-header .controls {
+    .scope-selector-wrap {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .summary-filter-header select {
+    .scope-selector-wrap label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+    .scope-selector-wrap select {
       width: auto;
-      min-width: 200px;
+      min-width: 220px;
       padding: 6px 12px;
       font-size: 13px;
       font-weight: 600;
-      background: #ffffff;
-      border: 1px solid var(--border);
       border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid var(--primary);
       color: var(--primary);
       outline: none;
       cursor: pointer;
@@ -248,7 +249,6 @@
     .fill-amber { background: #f59e0b; }
     .fill-green { background: #10b981; }
 
-    /* Optimal target card box */
     .optimal-box {
       font-size: 12px;
       color: var(--text-muted);
@@ -310,7 +310,7 @@
     <div class="top-bar">
       <div>
         <h1>Trợ Lý Quản Lý & Tối Ưu Thẻ Tín Dụng</h1>
-        <p>Lưu trữ lịch sử vĩnh viễn, lọc theo tháng/thẻ và tính toán chu kỳ thông minh</p>
+        <p>Lưu trữ lịch sử vĩnh viễn, lọc số liệu theo từng thẻ và chu kỳ sao kê</p>
       </div>
       <div class="btn-group">
         <button class="btn btn-secondary" onclick="exportBackupData()">💾 Sao lưu (Export)</button>
@@ -320,25 +320,25 @@
       </div>
     </div>
 
-    <!-- Thanh Lọc & Tiêu Đề Dashboard Phía Trên -->
-    <div class="summary-filter-header">
-      <div class="title" id="summaryHeaderTitle">📊 Tổng quan chu kỳ: Tất cả các thẻ</div>
-      <div class="controls">
-        <label for="summaryCardFilter" style="margin-bottom:0; font-size:13px; color:var(--text-muted);">Xem số liệu theo thẻ:</label>
-        <select id="summaryCardFilter" onchange="renderSummaryDashboard()">
-          <option value="ALL">🌟 Tất cả các thẻ (Toàn bộ ví)</option>
+    <!-- Thanh Chọn Phạm Vi Thống Kê Dashboard -->
+    <div class="dashboard-scope-bar">
+      <div class="scope-selector-wrap">
+        <label for="dashboardCardScope">👁️ Xem số liệu thống kê của:</label>
+        <select id="dashboardCardScope" onchange="renderDashboardStats()">
+          <option value="ALL">🌟 Toàn bộ các thẻ (Tổng hợp)</option>
         </select>
       </div>
+      <span id="scopeSubBadge" style="font-size:12.5px; font-weight:600; color:var(--text-muted);">Chu kỳ sao kê hiện tại</span>
     </div>
 
     <!-- 4 Khối Thống Kê Tổng Quan -->
     <div class="summary-grid">
       <div class="stat-card">
-        <div class="label" id="labelSpend">Tổng chi tiêu chu kỳ hiện tại</div>
+        <div class="label" id="labelSpend">Tổng chi tiêu toàn bộ thẻ (Kỳ hiện tại)</div>
         <div class="value" style="color: var(--primary);" id="statTotalSpend">0 ₫</div>
       </div>
       <div class="stat-card">
-        <div class="label" id="labelCashback">Tổng hoàn tiền chu kỳ hiện tại</div>
+        <div class="label" id="labelCashback">Tổng hoàn tiền toàn bộ thẻ (Kỳ hiện tại)</div>
         <div class="value" style="color: var(--emerald);" id="statTotalCashback">0 ₫</div>
       </div>
       <div class="stat-card">
@@ -346,7 +346,7 @@
         <div class="value" style="color: var(--rose);" id="statTotalFee">0 ₫</div>
       </div>
       <div class="stat-card">
-        <div class="label" id="labelNet">Lợi nhuận ròng chu kỳ hiện tại</div>
+        <div class="label" id="labelNet">Lợi nhuận ròng toàn bộ thẻ</div>
         <div class="value" id="statNetProfit">0 ₫</div>
       </div>
     </div>
@@ -577,17 +577,20 @@
       }
     ];
 
-    let cards = JSON.parse(localStorage.getItem('cards_master_filter_v14')) || defaultDataCards;
-    let historyList = JSON.parse(localStorage.getItem('history_master_filter_v14')) || defaultDataHistory;
+    let cards = JSON.parse(localStorage.getItem('cards_master_filter_v13')) || defaultDataCards;
+    let historyList = JSON.parse(localStorage.getItem('history_master_filter_v13')) || defaultDataHistory;
 
     document.getElementById('txDate').valueAsDate = new Date();
 
     function saveState() {
-      localStorage.setItem('cards_master_filter_v14', JSON.stringify(cards));
-      localStorage.setItem('history_master_filter_v14', JSON.stringify(historyList));
+      localStorage.setItem('cards_master_filter_v13', JSON.stringify(cards));
+      localStorage.setItem('history_master_filter_v13', JSON.stringify(historyList));
       render();
     }
 
+    // ==========================================
+    // TÍNH TOÁN CHU KỲ SAO KÊ & DỮ LIỆU HIỆN TẠI
+    // ==========================================
     function getCycleTag(dateStr, statementDay) {
       const d = new Date(dateStr);
       const year = d.getFullYear();
@@ -624,6 +627,9 @@
       return { spend, cashback, fees };
     }
 
+    // ==========================================
+    // BACKUP & RESTORE
+    // ==========================================
     function exportBackupData() {
       const dataToExport = {
         version: "7.0",
@@ -688,4 +694,534 @@
 
     function handleTypeChange() {
       const type = document.querySelector('input[name="txType"]:checked').value;
-      document.getElementById('resell
+      document.getElementById('resellFeeBox').style.display = (type === 'resell') ? 'flex' : 'none';
+      calcLivePreview();
+    }
+
+    function computeCashback(card, amount, isFiller) {
+      if (isFiller || amount <= 0) {
+        return { reward: 0, note: "Giao dịch bù mốc chỉ tiêu (0% hoàn)" };
+      }
+      const ratePct = (card.rate || 0) / 100;
+      return { reward: amount * ratePct, note: `Hoàn ${card.rate}% theo quy định` };
+    }
+
+    function calcLivePreview() {
+      const cardId = document.getElementById('txCardSelect').value;
+      const amount = parseFloat(document.getElementById('txAmount').value);
+      const txType = document.querySelector('input[name="txType"]:checked').value;
+      const feePct = parseFloat(document.getElementById('resellFeePct').value) || 0;
+      const liveBox = document.getElementById('liveCalc');
+
+      if (!amount || amount <= 0) {
+        liveBox.style.display = 'none';
+        return;
+      }
+
+      const card = cards.find(c => c.id === cardId);
+      const curStats = getCardCurrentStats(card);
+      const res = computeCashback(card, amount, txType === 'filler');
+      const remainingMonthly = Math.max(0, card.monthlyCap - curStats.cashback);
+      const actualCashback = Math.min(res.reward, remainingMonthly);
+
+      let resellFee = 0;
+      if (txType === 'resell') {
+        resellFee = amount * (feePct / 100);
+      }
+      const netProfit = actualCashback - resellFee;
+
+      let warningHtml = "";
+      if (curStats.cashback >= card.monthlyCap) {
+        warningHtml = `<div style="color:var(--rose); font-weight:700; margin-top:5px;">⚠️ CẢNH BÁO: Thẻ này ĐÃ ĐẦY TRẦN HOÀN TIỀN (${card.monthlyCap.toLocaleString()} ₫). Bill này nhận 0₫ hoàn tiền!</div>`;
+      } else if (actualCashback < res.reward) {
+        const wastedSpend = Math.round((res.reward - actualCashback) / ((card.rate || 1) / 100));
+        warningHtml = `<div style="color:var(--amber); font-weight:600; margin-top:5px;">⚠️ LƯU Ý: Bill này làm thẻ chạm trần. Bạn bị lãng phí khoảng <b>${wastedSpend.toLocaleString()} ₫</b> doanh số quẹt vào 0% cashback.</div>`;
+      }
+
+      liveBox.style.display = 'block';
+      liveBox.innerHTML = `
+        <div>• <b>Cộng tổng chi tiêu thẻ:</b> <span class="mono-blue">+${amount.toLocaleString()} ₫</span> (luôn tính đủ 100%)</div>
+        <div>• <b>Hoàn tiền ngân hàng trả:</b> <span class="mono-hl">+${Math.round(actualCashback).toLocaleString()} ₫</span> (${res.note})</div>
+        ${txType === 'resell' ? `<div>• <b>Phí bán lại chịu lỗ (${feePct}%):</b> <span class="mono-rose">-${Math.round(resellFee).toLocaleString()} ₫</span></div>` : ''}
+        <div style="margin-top:4px; padding-top:4px; border-top:1px dashed #cbd5e1;">
+          ➔ <b>Lợi nhuận ròng:</b> 
+          <span style="font-family:var(--font-mono); font-weight:800; color:${netProfit >= 0 ? 'var(--emerald)' : 'var(--rose)'};">
+            ${netProfit >= 0 ? '+' : ''}${Math.round(netProfit).toLocaleString()} ₫
+          </span>
+        </div>
+        ${warningHtml}
+      `;
+    }
+
+    function recordExpense() {
+      const cardId = document.getElementById('txCardSelect').value;
+      const amount = parseFloat(document.getElementById('txAmount').value);
+      const dateStr = document.getElementById('txDate').value;
+      const txType = document.querySelector('input[name="txType"]:checked').value;
+      const feePct = parseFloat(document.getElementById('resellFeePct').value) || 0;
+
+      if (!amount || amount <= 0 || !dateStr) {
+        alert("Vui lòng nhập số tiền và ngày hợp lệ!");
+        return;
+      }
+
+      const card = cards.find(c => c.id === cardId);
+      if (!card) return;
+
+      const curStats = getCardCurrentStats(card);
+      const res = computeCashback(card, amount, txType === 'filler');
+      const remainingMonthly = Math.max(0, card.monthlyCap - curStats.cashback);
+      const actualCashback = Math.min(res.reward, remainingMonthly);
+
+      let feeAmount = 0;
+      if (txType === 'resell') {
+        feeAmount = Math.round(amount * (feePct / 100));
+      }
+      const net = Math.round(actualCashback - feeAmount);
+
+      let typeTag = "Cá nhân";
+      if (txType === 'resell') typeTag = `Bán lại (-${feePct}%)`;
+      if (txType === 'filler') typeTag = "Quẹt bù mốc";
+
+      const cycleTag = getCycleTag(dateStr, card.statementDay);
+
+      historyList.unshift({
+        id: "tx_" + Date.now(),
+        date: dateStr,
+        cardId: card.id,
+        cardName: card.name,
+        typeTag: typeTag,
+        amount: amount,
+        cashback: Math.round(actualCashback),
+        fee: feeAmount,
+        net: net,
+        cycleTag: cycleTag
+      });
+
+      document.getElementById('txAmount').value = '';
+      document.getElementById('liveCalc').style.display = 'none';
+
+      saveState();
+    }
+
+    function deleteTx(txId) {
+      const idx = historyList.findIndex(h => h.id === txId);
+      if (idx === -1) return;
+      const tx = historyList[idx];
+
+      if (confirm(`Xác nhận xóa giao dịch ${tx.amount.toLocaleString()} ₫ của thẻ ${tx.cardName}?`)) {
+        historyList.splice(idx, 1);
+        saveState();
+      }
+    }
+
+    function resetSingleCard(cardId) {
+      const card = cards.find(c => c.id === cardId);
+      if (!card) return;
+
+      const curStats = getCardCurrentStats(card);
+      if (confirm(`Bạn vừa nhận sao kê ngày ${card.statementDay} của thẻ "${card.name}"?\n• Tiến độ thẻ này sẽ chuyển sang kỳ sao kê mới (về 0 ₫).\n• TOÀN BỘ lịch sử giao dịch cũ (${curStats.spend.toLocaleString()} ₫) VẪN ĐƯỢC LƯU LẠI VĨNH VIỄN để tra cứu!`)) {
+        card.lastResetDate = new Date().toISOString();
+        saveState();
+      }
+    }
+
+    // Modal
+    function openAddCardModal() {
+      document.getElementById('modalTitle').innerText = "Thêm Thẻ Tín Dụng Mới";
+      document.getElementById('editCardId').value = "";
+      document.getElementById('mCardName').value = "";
+      document.getElementById('mCardBrand').value = "VISA";
+      document.getElementById('mCardStmtDay').value = "20";
+      document.getElementById('mCardMinSpend').value = "10000000";
+      document.getElementById('mCardMonthlyCap').value = "500000";
+      document.getElementById('mFixedRate').value = "5";
+      document.getElementById('cardModal').classList.add('active');
+    }
+
+    function openEditCardModal(cardId) {
+      const card = cards.find(c => c.id === cardId);
+      if (!card) return;
+
+      document.getElementById('modalTitle').innerText = `Chỉnh Sửa: ${card.name}`;
+      document.getElementById('editCardId').value = card.id;
+      document.getElementById('mCardName').value = card.name;
+      document.getElementById('mCardBrand').value = card.brand;
+      document.getElementById('mCardStmtDay').value = card.statementDay;
+      document.getElementById('mCardMinSpend').value = card.minSpend;
+      document.getElementById('mCardMonthlyCap').value = card.monthlyCap;
+      document.getElementById('mFixedRate').value = card.rate;
+
+      document.getElementById('cardModal').classList.add('active');
+    }
+
+    function closeCardModal() {
+      document.getElementById('cardModal').classList.remove('active');
+    }
+
+    function saveCardFromModal() {
+      const cardId = document.getElementById('editCardId').value;
+      const name = document.getElementById('mCardName').value.trim();
+      const brand = document.getElementById('mCardBrand').value;
+      const stmtDay = parseInt(document.getElementById('mCardStmtDay').value);
+      const minSpend = parseFloat(document.getElementById('mCardMinSpend').value);
+      const monthlyCap = parseFloat(document.getElementById('mCardMonthlyCap').value);
+      const rate = parseFloat(document.getElementById('mFixedRate').value) || 0;
+
+      if (!name || isNaN(stmtDay) || isNaN(minSpend) || isNaN(monthlyCap)) {
+        alert("Vui lòng điền đủ thông tin!");
+        return;
+      }
+
+      if (cardId) {
+        const card = cards.find(c => c.id === cardId);
+        if (card) {
+          card.name = name;
+          card.brand = brand;
+          card.statementDay = stmtDay;
+          card.minSpend = minSpend;
+          card.monthlyCap = monthlyCap;
+          card.rate = rate;
+          card.ruleDesc = `Hoàn ${rate}% (Max ${monthlyCap.toLocaleString()} ₫/tháng)`;
+        }
+      } else {
+        const colors = [
+          "linear-gradient(135deg, #059669, #065f46)",
+          "linear-gradient(135deg, #0891b2, #164e63)",
+          "linear-gradient(135deg, #7c3aed, #4c1d95)",
+          "linear-gradient(135deg, #ea580c, #7c2d12)",
+          "linear-gradient(135deg, #2563eb, #1e3a8a)"
+        ];
+        cards.push({
+          id: "card_" + Date.now(),
+          name: name,
+          brand: brand,
+          color: colors[cards.length % colors.length],
+          statementDay: stmtDay,
+          minSpend: minSpend,
+          monthlyCap: monthlyCap,
+          rate: rate,
+          lastResetDate: null,
+          ruleDesc: `Hoàn ${rate}% (Max ${monthlyCap.toLocaleString()} ₫/tháng)`
+        });
+      }
+
+      closeCardModal();
+      saveState();
+    }
+
+    function deleteCard(id) {
+      if (confirm("Xóa thẻ này khỏi danh sách theo dõi? (Các giao dịch cũ của thẻ này trong lịch sử vẫn được giữ nguyên)")) {
+        cards = cards.filter(c => c.id !== id);
+        saveState();
+      }
+    }
+
+    function renderAdvisor() {
+      const activeCards = cards.filter(c => {
+        const s = getCardCurrentStats(c);
+        return s.cashback < c.monthlyCap;
+      });
+      const advBox = document.getElementById('advisorRecommendation');
+      const advSub = document.getElementById('advisorSubText');
+
+      if (activeCards.length === 0) {
+        advBox.innerHTML = `🎉 <b>Tất cả các thẻ đã đầy 100% trần hoàn tiền tháng!</b> Hãy cất ví, dừng quẹt để bảo toàn lợi nhuận.`;
+        advSub.innerText = "";
+        return;
+      }
+
+      activeCards.sort((a, b) => b.rate - a.rate);
+      const topPick = activeCards[0];
+      const curStats = getCardCurrentStats(topPick);
+      const optimalSpend = Math.round(topPick.monthlyCap / (topPick.rate / 100));
+      const remainSpendToMax = Math.max(0, optimalSpend - curStats.spend);
+
+      let text = `Ưu tiên số 1: <b>${topPick.name}</b> (${topPick.rate}%). `;
+      if (curStats.spend < topPick.minSpend) {
+        text += `Còn thiếu <b>${(topPick.minSpend - curStats.spend).toLocaleString()} ₫</b> để kích hoạt mốc min. `;
+      }
+      text += `Quẹt thêm tối đa <b>${remainSpendToMax.toLocaleString()} ₫</b> là gom trọn trần ${topPick.monthlyCap.toLocaleString()} ₫!`;
+
+      advBox.innerHTML = text;
+
+      const urgentCard = cards.find(c => {
+        const s = getCardCurrentStats(c);
+        return getDaysUntilStatement(c.statementDay) <= 4 && s.spend < c.minSpend;
+      });
+      if (urgentCard) {
+        advSub.innerHTML = `⚠️ Chú ý: <b>${urgentCard.name}</b> còn ${getDaysUntilStatement(urgentCard.statementDay)} ngày nữa là chốt sao kê mà chưa đủ min!`;
+        advSub.style.color = "var(--rose)";
+      } else {
+        advSub.innerText = `Còn ${activeCards.length} thẻ chưa chạm trần`;
+        advSub.style.color = "#1e40af";
+      }
+    }
+
+    // ==========================================
+    // CẬP NHẬT 4 KHỐI DASHBOARD THEO THẺ ĐƯỢC CHỌN
+    // ==========================================
+    function updateDashboardScopeDropdown() {
+      const scopeSel = document.getElementById('dashboardCardScope');
+      const curVal = scopeSel.value;
+      let options = `<option value="ALL">🌟 Toàn bộ các thẻ (Tổng hợp)</option>`;
+      cards.forEach(c => {
+        options += `<option value="${c.id}">💳 ${c.name} (${c.rate}%)</option>`;
+      });
+      scopeSel.innerHTML = options;
+      if (curVal && (curVal === 'ALL' || cards.some(c => c.id === curVal))) {
+        scopeSel.value = curVal;
+      }
+    }
+
+    function renderDashboardStats() {
+      const selectedScope = document.getElementById('dashboardCardScope').value;
+      const subBadge = document.getElementById('scopeSubBadge');
+
+      let spend = 0;
+      let cashback = 0;
+      let fees = 0;
+
+      if (selectedScope === "ALL") {
+        cards.forEach(c => {
+          const s = getCardCurrentStats(c);
+          spend += s.spend;
+          cashback += s.cashback;
+          fees += s.fees;
+        });
+        document.getElementById('labelSpend').innerText = "Tổng chi tiêu toàn bộ thẻ (Kỳ hiện tại)";
+        document.getElementById('labelCashback').innerText = "Tổng hoàn tiền toàn bộ thẻ (Kỳ hiện tại)";
+        document.getElementById('labelFee').innerText = "Tổng phí chiết khấu chu kỳ";
+        document.getElementById('labelNet').innerText = "Lợi nhuận ròng toàn bộ thẻ";
+        subBadge.innerText = `Đang cộng dồn ${cards.length} thẻ`;
+      } else {
+        const targetCard = cards.find(c => c.id === selectedScope);
+        if (targetCard) {
+          const s = getCardCurrentStats(targetCard);
+          spend = s.spend;
+          cashback = s.cashback;
+          fees = s.fees;
+          document.getElementById('labelSpend').innerText = `Chi tiêu thẻ ${targetCard.name}`;
+          document.getElementById('labelCashback').innerText = `Hoàn tiền thẻ ${targetCard.name}`;
+          document.getElementById('labelFee').innerText = `Phí phát sinh thẻ ${targetCard.name}`;
+          document.getElementById('labelNet').innerText = `Lợi nhuận ròng thẻ ${targetCard.name}`;
+          subBadge.innerText = `Sao kê ngày ${targetCard.statementDay} hàng tháng | Max ${targetCard.monthlyCap.toLocaleString()} ₫`;
+        }
+      }
+
+      const netProfit = cashback - fees;
+
+      document.getElementById('statTotalSpend').innerText = spend.toLocaleString() + ' ₫';
+      document.getElementById('statTotalCashback').innerText = Math.round(cashback).toLocaleString() + ' ₫';
+      document.getElementById('statTotalFee').innerText = Math.round(fees).toLocaleString() + ' ₫';
+      
+      const elNet = document.getElementById('statNetProfit');
+      elNet.innerText = (netProfit >= 0 ? '+' : '') + Math.round(netProfit).toLocaleString() + ' ₫';
+      elNet.style.color = netProfit >= 0 ? 'var(--emerald)' : 'var(--rose)';
+    }
+
+    // ==========================================
+    // BỘ LỌC DỮ LIỆU & BÁO CÁO LỊCH SỬ THÔNG MINH
+    // ==========================================
+    function updateFilterDropdowns() {
+      const monthSel = document.getElementById('filterMonth');
+      const curVal = monthSel.value;
+      const allMonths = [...new Set(historyList.map(h => h.date ? h.date.slice(0, 7) : ''))].filter(Boolean);
+      allMonths.sort().reverse();
+
+      let monthOptions = `<option value="ALL">Tất cả các tháng (Lịch sử)</option>`;
+      allMonths.forEach(m => {
+        monthOptions += `<option value="${m}">Tháng ${m}</option>`;
+      });
+      monthSel.innerHTML = monthOptions;
+      if (allMonths.includes(curVal) || curVal === 'ALL') {
+        monthSel.value = curVal;
+      }
+
+      const cardSel = document.getElementById('filterCard');
+      const curCardVal = cardSel.value;
+      let cardOptions = `<option value="ALL">Tất cả các thẻ</option>`;
+      cards.forEach(c => {
+        cardOptions += `<option value="${c.id}">${c.name}</option>`;
+      });
+      cardSel.innerHTML = cardOptions;
+      if (curCardVal) cardSel.value = curCardVal;
+    }
+
+    function applyFilters() {
+      const selectedMonth = document.getElementById('filterMonth').value;
+      const selectedCardId = document.getElementById('filterCard').value;
+      const selectedType = document.getElementById('filterType').value;
+
+      let filtered = [...historyList];
+
+      if (selectedMonth !== "ALL") {
+        filtered = filtered.filter(h => h.date && h.date.startsWith(selectedMonth));
+      }
+      if (selectedCardId !== "ALL") {
+        filtered = filtered.filter(h => h.cardId === selectedCardId);
+      }
+      if (selectedType !== "ALL") {
+        filtered = filtered.filter(h => h.typeTag && h.typeTag.includes(selectedType));
+      }
+
+      renderHistoryTable(filtered);
+
+      const fSpend = filtered.reduce((s, h) => s + h.amount, 0);
+      const fCashback = filtered.reduce((s, h) => s + h.cashback, 0);
+      const fFees = filtered.reduce((s, h) => s + (h.fee || 0), 0);
+      const fNet = fCashback - fFees;
+
+      const badgeEl = document.getElementById('filteredStatsBadge');
+      if (selectedMonth !== "ALL" || selectedCardId !== "ALL" || selectedType !== "ALL") {
+        badgeEl.innerHTML = `🔍 Kết quả lọc: ${filtered.length} GD | Chi: <b>${fSpend.toLocaleString()} ₫</b> | Hoàn: <b style="color:var(--emerald)">${fCashback.toLocaleString()} ₫</b> | Lời ròng: <b style="color:${fNet>=0?'var(--emerald)':'var(--rose)'}">${fNet.toLocaleString()} ₫</b>`;
+      } else {
+        badgeEl.innerHTML = `Tổng ${historyList.length} giao dịch được lưu trữ`;
+      }
+    }
+
+    function resetFilters() {
+      document.getElementById('filterMonth').value = "ALL";
+      document.getElementById('filterCard').value = "ALL";
+      document.getElementById('filterType').value = "ALL";
+      applyFilters();
+    }
+
+    function renderHistoryTable(list) {
+      const tbody = document.getElementById('historyBody');
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:16px;">Không tìm thấy giao dịch nào phù hợp với bộ lọc.</td></tr>`;
+      } else {
+        tbody.innerHTML = list.map(h => `
+          <tr>
+            <td class="mono">${h.date}</td>
+            <td><strong>${h.cardName}</strong></td>
+            <td><span style="font-size:12px; color:var(--text-muted);">${h.typeTag}</span></td>
+            <td class="mono">${h.amount.toLocaleString()} ₫</td>
+            <td class="mono" style="color:var(--emerald); font-weight:700;">+${h.cashback.toLocaleString()} ₫</td>
+            <td class="mono" style="color:var(--rose); font-weight:600;">${h.fee > 0 ? '-' + h.fee.toLocaleString() + ' ₫' : '0 ₫'}</td>
+            <td class="mono" style="font-weight:800; color:${h.net >= 0 ? 'var(--emerald)' : 'var(--rose)'};">${h.net >= 0 ? '+' : ''}${h.net.toLocaleString()} ₫</td>
+            <td><span class="mono" style="font-size:11.5px; background:#eff6ff; color:#1e40af; padding:2px 6px; border-radius:4px;">${h.cycleTag || h.date.slice(0,7)}</span></td>
+            <td><button class="btn-action-small" style="color:var(--rose);" onclick="deleteTx('${h.id}')">Xóa</button></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function render() {
+      // 1. Dropdown chọn thẻ khi quẹt bill
+      const sel = document.getElementById('txCardSelect');
+      sel.innerHTML = cards.map(c => {
+        const s = getCardCurrentStats(c);
+        return `<option value="${c.id}">${c.name} (${c.rate}%) ${s.cashback >= c.monthlyCap ? '[ĐÃ FULL TRẦN]' : ''}</option>`;
+      }).join('');
+
+      // 2. Cập nhật dropdown phạm vi và 4 khối thống kê Dashboard
+      updateDashboardScopeDropdown();
+      renderDashboardStats();
+
+      // 3. Advisor
+      renderAdvisor();
+
+      // 4. Render Deck Thẻ
+      const container = document.getElementById('cardsContainer');
+      container.innerHTML = cards.map(c => {
+        const curStats = getCardCurrentStats(c);
+        const spendPct = Math.min(100, Math.round((curStats.spend / c.minSpend) * 100));
+        const capPct = Math.min(100, Math.round((curStats.cashback / c.monthlyCap) * 100));
+        const isMinMet = curStats.spend >= c.minSpend;
+        const isCapMet = curStats.cashback >= c.monthlyCap;
+        const daysLeft = getDaysUntilStatement(c.statementDay);
+
+        const optimalSpend = Math.round(c.monthlyCap / ((c.rate || 1) / 100));
+        const isOverOptimal = curStats.spend > optimalSpend;
+
+        let badge = `<span class="badge badge-wait">⏳ Chưa đủ mốc</span>`;
+        if (isCapMet) {
+          badge = `<span class="badge badge-full">🛑 Đã gom đủ 100% trần</span>`;
+        } else if (isMinMet) {
+          badge = `<span class="badge badge-ok">✓ Đã đủ mốc kích hoạt</span>`;
+        } else if (daysLeft <= 4) {
+          badge = `<span class="badge badge-urgent">🔥 Còn ${daysLeft} ngày chốt sổ!</span>`;
+        }
+
+        return `
+          <div class="card-item">
+            <div class="card-mini" style="background: ${c.color};">
+              <div class="card-mini-top">
+                <div class="card-chip"></div>
+                <div class="card-brand">${c.brand}</div>
+              </div>
+              <div>
+                <div class="card-title">${c.name}</div>
+                <div class="card-rule-tag">${c.ruleDesc}</div>
+              </div>
+              <div class="card-stmt-day">Sao kê: Ngày ${c.statementDay} hàng tháng</div>
+            </div>
+
+            <div class="card-content">
+              <div class="card-content-header">
+                <div style="font-size: 13px; font-weight: 600; color: ${daysLeft <= 4 && !isMinMet ? 'var(--rose)' : 'var(--text-muted)'};">
+                  🗓 Còn <b>${daysLeft} ngày</b> nữa chốt sao kê
+                </div>
+                ${badge}
+              </div>
+
+              <!-- Thanh 1: Tiến độ chi tiêu tối thiểu -->
+              <div class="meter-group">
+                <div class="meter-label">
+                  <span>Mốc chi tiêu tối thiểu (${spendPct}%)</span>
+                  <span>${curStats.spend.toLocaleString()} ₫ / <span style="color:var(--text-muted)">${c.minSpend.toLocaleString()} ₫</span></span>
+                </div>
+                <div class="bar-bg">
+                  <div class="bar-fill ${isMinMet ? 'fill-blue' : 'fill-amber'}" style="width: ${spendPct}%;"></div>
+                </div>
+              </div>
+
+              <!-- Thanh 2: Tiền hoàn tích lũy -->
+              <div class="meter-group">
+                <div class="meter-label">
+                  <span>Tiền hoàn tích lũy (${capPct}%)</span>
+                  <span style="color: var(--emerald);">${Math.round(curStats.cashback).toLocaleString()} ₫ / <span style="color:var(--text-muted)">${c.monthlyCap.toLocaleString()} ₫</span></span>
+                </div>
+                <div class="bar-bg">
+                  <div class="bar-fill fill-green" style="width: ${capPct}%;"></div>
+                </div>
+              </div>
+
+              <!-- Hộp phân tích điểm bão hòa -->
+              <div class="optimal-box">
+                <span>🎯 Điểm quẹt vừa đủ trần: <b>${optimalSpend.toLocaleString()} ₫</b></span>
+                <span>
+                  ${isOverOptimal 
+                    ? `<span style="color:var(--rose); font-weight:700;">Đang quẹt dư ${(curStats.spend - optimalSpend).toLocaleString()} ₫ (0% hoàn)</span>`
+                    : `Còn quẹt được <b>${(optimalSpend - curStats.spend).toLocaleString()} ₫</b> nữa sinh lời`}
+                </span>
+              </div>
+
+              <div class="card-footer">
+                <div>
+                  <button class="btn-action-small" style="font-weight:700; color:var(--primary);" onclick="openEditCardModal('${c.id}')">✏️ Sửa thẻ</button>
+                  <button class="btn-action-small" style="margin-left:4px;" onclick="resetSingleCard('${c.id}')">↺ Bắt đầu kỳ sao kê mới</button>
+                  <button class="btn-action-small" style="color:var(--rose); margin-left:4px;" onclick="deleteCard('${c.id}')">Xóa</button>
+                </div>
+                <span style="font-size:12px; color:var(--text-muted);">
+                  ${!isMinMet 
+                    ? `Thiếu <b>${(c.minSpend - curStats.spend).toLocaleString()} ₫</b> để kích hoạt` 
+                    : isCapMet ? `Đã full hạn mức` : `Còn nhận thêm được <b>${(c.monthlyCap - curStats.cashback).toLocaleString()} ₫</b>`}
+                </span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 5. Cập nhật bộ lọc và bảng lịch sử
+      updateFilterDropdowns();
+      applyFilters();
+    }
+
+    render();
+  </script>
+</body>
+</html>
