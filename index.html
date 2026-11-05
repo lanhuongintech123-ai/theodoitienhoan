@@ -76,7 +76,7 @@
     }
     .scope-item select {
       width: auto;
-      min-width: 170px;
+      min-width: 190px;
       padding: 6px 12px;
       font-size: 13px;
       font-weight: 600;
@@ -320,7 +320,7 @@
     <div class="top-bar">
       <div>
         <h1>Trợ Lý Quản Lý & Tối Ưu Thẻ Tín Dụng</h1>
-        <p>Lưu trữ vĩnh viễn, lọc dữ liệu tổng quan theo Tháng & theo Thẻ độc lập</p>
+        <p>Lưu trữ vĩnh viễn, lọc theo chu kỳ sao kê chuẩn xác và tự động gắn nhãn kỳ</p>
       </div>
       <div class="btn-group">
         <button class="btn btn-secondary" onclick="exportBackupData()">💾 Sao lưu (Export)</button>
@@ -330,7 +330,7 @@
       </div>
     </div>
 
-    <!-- THANH LỌC PHẠM VI TỔNG QUAN (XEM THEO THẺ & THEO THÁNG) -->
+    <!-- THANH LỌC PHẠM VI TỔNG QUAN (XEM THEO THẺ & THEO CHU KỲ SAO KÊ) -->
     <div class="dashboard-scope-bar">
       <div class="scope-controls">
         <div class="scope-item">
@@ -340,7 +340,7 @@
           </select>
         </div>
         <div class="scope-item">
-          <label for="dashboardMonthScope">🗓️ Xem thời gian:</label>
+          <label for="dashboardMonthScope">🗓️ Xem chu kỳ:</label>
           <select id="dashboardMonthScope" onchange="renderDashboardStats()">
             <option value="CURRENT_CYCLE">⚡ Chu kỳ sao kê hiện tại</option>
             <option value="ALL_TIME">♾️ Toàn bộ thời gian (Lũy kế)</option>
@@ -436,7 +436,7 @@
       <!-- BỘ LỌC BẢNG LỊCH SỬ -->
       <div class="filter-bar">
         <div>
-          <label>Lọc theo tháng (Năm-Tháng):</label>
+          <label>Lọc theo chu kỳ sao kê:</label>
           <select id="filterMonth" onchange="applyFilters()"></select>
         </div>
         <div>
@@ -1304,52 +1304,62 @@
       }
     ];
 
-    let cards = JSON.parse(localStorage.getItem('cards_master_filter_v16')) || defaultDataCards;
-    let historyList = JSON.parse(localStorage.getItem('history_master_filter_v16')) || defaultDataHistory;
+    let cards = JSON.parse(localStorage.getItem('cards_master_filter_v17')) || defaultDataCards;
+    let historyList = JSON.parse(localStorage.getItem('history_master_filter_v17')) || defaultDataHistory;
 
     document.getElementById('txDate').valueAsDate = new Date();
 
     function saveState() {
-      localStorage.setItem('cards_master_filter_v16', JSON.stringify(cards));
-      localStorage.setItem('history_master_filter_v16', JSON.stringify(historyList));
+      localStorage.setItem('cards_master_filter_v17', JSON.stringify(cards));
+      localStorage.setItem('history_master_filter_v17', JSON.stringify(historyList));
       render();
     }
 
+    // ==========================================
+    // TÍNH TOÁN CHU KỲ SAO KÊ CHUẨN XÁC
+    // ==========================================
     function getCycleTag(dateStr, statementDay) {
-      const d = new Date(dateStr);
-      const year = d.getFullYear();
-      const month = d.getMonth() + 1;
-      const day = d.getDate();
+      const parts = dateStr.split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
 
-      if (day > statementDay) {
-        if (month === 12) {
-          return `${year + 1}-01`;
-        } else {
-          return `${year}-${String(month + 1).padStart(2, '0')}`;
-        }
+      // Nếu ngày quẹt > ngày sao kê thì hóa đơn chốt ở kỳ sao kê tháng tiếp theo
+      if (d > statementDay) {
+        return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
       } else {
-        return `${year}-${String(month).padStart(2, '0')}`;
+        return `${y}-${String(m).padStart(2, '0')}`;
       }
     }
 
-    // Lấy số liệu của thẻ theo kỳ hiện tại (sau ngày reset)
-    function getCardCurrentStats(card) {
-      const resetTime = card.lastResetDate ? new Date(card.lastResetDate).getTime() : 0;
+    // Xác định chu kỳ sao kê hiện tại của thẻ tính đến thời điểm hôm nay
+    function getCardCurrentCycleTag(card, refDate = new Date()) {
+      const y = refDate.getFullYear();
+      const m = refDate.getMonth() + 1;
+      const d = refDate.getDate();
+
+      if (d > card.statementDay) {
+        return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+      } else {
+        return `${y}-${String(m).padStart(2, '0')}`;
+      }
+    }
+
+    // Lấy số liệu của thẻ theo đúng chu kỳ sao kê (cycleTag)
+    function getCardStatsForCycle(card, targetCycle = null) {
+      const activeCycle = targetCycle || getCardCurrentCycleTag(card);
       
       const relevantTxs = historyList.filter(h => {
         if (h.cardId !== card.id) return false;
-        if (resetTime > 0) {
-          const txTime = new Date(h.date).getTime();
-          return txTime >= resetTime;
-        }
-        return true;
+        const cTag = h.cycleTag || getCycleTag(h.date, card.statementDay);
+        return cTag === activeCycle;
       });
 
       const spend = relevantTxs.reduce((sum, h) => sum + h.amount, 0);
       const cashback = relevantTxs.reduce((sum, h) => sum + h.cashback, 0);
       const fees = relevantTxs.reduce((sum, h) => sum + (h.fee || 0), 0);
 
-      return { spend, cashback, fees };
+      return { spend, cashback, fees, cycleTag: activeCycle };
     }
 
     // ==========================================
@@ -1357,7 +1367,7 @@
     // ==========================================
     function exportBackupData() {
       const dataToExport = {
-        version: "8.0",
+        version: "9.0",
         exportDate: new Date().toISOString(),
         cards: cards,
         history: historyList
@@ -1434,17 +1444,19 @@
     function calcLivePreview() {
       const cardId = document.getElementById('txCardSelect').value;
       const amount = parseFloat(document.getElementById('txAmount').value);
+      const dateStr = document.getElementById('txDate').value;
       const txType = document.querySelector('input[name="txType"]:checked').value;
       const feePct = parseFloat(document.getElementById('resellFeePct').value) || 0;
       const liveBox = document.getElementById('liveCalc');
 
-      if (!amount || amount <= 0) {
+      if (!amount || amount <= 0 || !dateStr) {
         liveBox.style.display = 'none';
         return;
       }
 
       const card = cards.find(c => c.id === cardId);
-      const curStats = getCardCurrentStats(card);
+      const targetCycle = getCycleTag(dateStr, card.statementDay);
+      const curStats = getCardStatsForCycle(card, targetCycle);
       const res = computeCashback(card, amount, txType === 'filler');
       const remainingMonthly = Math.max(0, card.monthlyCap - curStats.cashback);
       const actualCashback = Math.min(res.reward, remainingMonthly);
@@ -1457,15 +1469,15 @@
 
       let warningHtml = "";
       if (curStats.cashback >= card.monthlyCap) {
-        warningHtml = `<div style="color:var(--rose); font-weight:700; margin-top:5px;">⚠️ CẢNH BÁO: Thẻ này ĐÃ ĐẦY TRẦN HOÀN TIỀN (${card.monthlyCap.toLocaleString()} ₫). Bill này nhận 0₫ hoàn tiền!</div>`;
+        warningHtml = `<div style="color:var(--rose); font-weight:700; margin-top:5px;">⚠️ CẢNH BÁO: Thẻ này ĐÃ ĐẦY TRẦN (${card.monthlyCap.toLocaleString()} ₫) trong kỳ ${targetCycle}. Bill này nhận 0₫ hoàn tiền!</div>`;
       } else if (actualCashback < res.reward) {
         const wastedSpend = Math.round((res.reward - actualCashback) / ((card.rate || 1) / 100));
-        warningHtml = `<div style="color:var(--amber); font-weight:600; margin-top:5px;">⚠️ LƯU Ý: Bill này làm thẻ chạm trần. Bạn bị lãng phí khoảng <b>${wastedSpend.toLocaleString()} ₫</b> doanh số quẹt vào 0% cashback.</div>`;
+        warningHtml = `<div style="color:var(--amber); font-weight:600; margin-top:5px;">⚠️ LƯU Ý: Bill này làm thẻ chạm trần kỳ ${targetCycle}. Bạn bị lãng phí khoảng <b>${wastedSpend.toLocaleString()} ₫</b> quẹt vào 0% cashback.</div>`;
       }
 
       liveBox.style.display = 'block';
       liveBox.innerHTML = `
-        <div>• <b>Cộng tổng chi tiêu thẻ:</b> <span class="mono-blue">+${amount.toLocaleString()} ₫</span> (luôn tính đủ 100%)</div>
+        <div>• <b>Cộng vào chu kỳ sao kê:</b> <span class="mono-blue">${targetCycle}</span> (+${amount.toLocaleString()} ₫)</div>
         <div>• <b>Hoàn tiền ngân hàng trả:</b> <span class="mono-hl">+${Math.round(actualCashback).toLocaleString()} ₫</span> (${res.note})</div>
         ${txType === 'resell' ? `<div>• <b>Phí bán lại chịu lỗ (${feePct}%):</b> <span class="mono-rose">-${Math.round(resellFee).toLocaleString()} ₫</span></div>` : ''}
         <div style="margin-top:4px; padding-top:4px; border-top:1px dashed #cbd5e1;">
@@ -1493,7 +1505,8 @@
       const card = cards.find(c => c.id === cardId);
       if (!card) return;
 
-      const curStats = getCardCurrentStats(card);
+      const cycleTag = getCycleTag(dateStr, card.statementDay);
+      const curStats = getCardStatsForCycle(card, cycleTag);
       const res = computeCashback(card, amount, txType === 'filler');
       const remainingMonthly = Math.max(0, card.monthlyCap - curStats.cashback);
       const actualCashback = Math.min(res.reward, remainingMonthly);
@@ -1507,8 +1520,6 @@
       let typeTag = "Cá nhân";
       if (txType === 'resell') typeTag = `Bán lại (-${feePct}%)`;
       if (txType === 'filler') typeTag = "Quẹt bù mốc";
-
-      const cycleTag = getCycleTag(dateStr, card.statementDay);
 
       historyList.unshift({
         id: "tx_" + Date.now(),
@@ -1544,11 +1555,9 @@
       const card = cards.find(c => c.id === cardId);
       if (!card) return;
 
-      const curStats = getCardCurrentStats(card);
-      if (confirm(`Bạn vừa nhận sao kê ngày ${card.statementDay} của thẻ "${card.name}"?\n• Tiến độ thẻ này sẽ chuyển sang kỳ sao kê mới (về 0 ₫).\n• TOÀN BỘ lịch sử giao dịch cũ (${curStats.spend.toLocaleString()} ₫) VẪN ĐƯỢC LƯU LẠI VĨNH VIỄN để tra cứu!`)) {
-        card.lastResetDate = new Date().toISOString();
-        saveState();
-      }
+      const curCycle = getCardCurrentCycleTag(card);
+      const curStats = getCardStatsForCycle(card, curCycle);
+      alert(`Thẻ "${card.name}" đang ở chu kỳ sao kê ${curCycle} (đã chi ${curStats.spend.toLocaleString()} ₫).\nKhi tới ngày sao kê ${card.statementDay}, các giao dịch mới sau ngày này sẽ tự động được chuyển sang kỳ mới mà không làm mất lịch sử cũ!`);
     }
 
     // Modal
@@ -1636,7 +1645,7 @@
     }
 
     function deleteCard(id) {
-      if (confirm("Xóa thẻ này khỏi danh sách theo dõi? (Các giao dịch cũ của thẻ này trong lịch sử vẫn được giữ nguyên)")) {
+      if (confirm("Xóa thẻ này khỏi danh sách theo dõi? (Các giao dịch cũ trong lịch sử vẫn được giữ nguyên)")) {
         cards = cards.filter(c => c.id !== id);
         saveState();
       }
@@ -1644,21 +1653,21 @@
 
     function renderAdvisor() {
       const activeCards = cards.filter(c => {
-        const s = getCardCurrentStats(c);
+        const s = getCardStatsForCycle(c);
         return s.cashback < c.monthlyCap;
       });
       const advBox = document.getElementById('advisorRecommendation');
       const advSub = document.getElementById('advisorSubText');
 
       if (activeCards.length === 0) {
-        advBox.innerHTML = `🎉 <b>Tất cả các thẻ đã đầy 100% trần hoàn tiền tháng!</b> Hãy cất ví, dừng quẹt để bảo toàn lợi nhuận.`;
+        advBox.innerHTML = `🎉 <b>Tất cả các thẻ đã đầy 100% trần hoàn tiền chu kỳ này!</b> Hãy cất ví, dừng quẹt để bảo toàn lợi nhuận.`;
         advSub.innerText = "";
         return;
       }
 
       activeCards.sort((a, b) => b.rate - a.rate);
       const topPick = activeCards[0];
-      const curStats = getCardCurrentStats(topPick);
+      const curStats = getCardStatsForCycle(topPick);
       const optimalSpend = Math.round(topPick.monthlyCap / (topPick.rate / 100));
       const remainSpendToMax = Math.max(0, optimalSpend - curStats.spend);
 
@@ -1671,7 +1680,7 @@
       advBox.innerHTML = text;
 
       const urgentCard = cards.find(c => {
-        const s = getCardCurrentStats(c);
+        const s = getCardStatsForCycle(c);
         return getDaysUntilStatement(c.statementDay) <= 4 && s.spend < c.minSpend;
       });
       if (urgentCard) {
@@ -1684,9 +1693,10 @@
     }
 
     // ==========================================
-    // CẬP NHẬT 4 KHỐI DASHBOARD THEO THẺ & THEO THÁNG
+    // CẬP NHẬT 4 KHỐI DASHBOARD THEO CHU KỲ SAO KÊ
     // ==========================================
     function updateDashboardScopeDropdowns() {
+      // 1. Dropdown Thẻ
       const scopeSel = document.getElementById('dashboardCardScope');
       const curVal = scopeSel.value;
       let options = `<option value="ALL">🌟 Toàn bộ các thẻ (Tổng hợp)</option>`;
@@ -1698,20 +1708,25 @@
         scopeSel.value = curVal;
       }
 
+      // 2. Dropdown Chu kỳ sao kê
       const monthScopeSel = document.getElementById('dashboardMonthScope');
       const curMonthVal = monthScopeSel.value;
-      const allMonths = [...new Set(historyList.map(h => h.date ? h.date.slice(0, 7) : ''))].filter(Boolean);
-      allMonths.sort().reverse();
+      
+      const allCycles = [...new Set(historyList.map(h => {
+        const card = cards.find(c => c.id === h.cardId);
+        return h.cycleTag || (card ? getCycleTag(h.date, card.statementDay) : '');
+      }))].filter(Boolean);
+      allCycles.sort().reverse();
 
       let monthScopeOptions = `
         <option value="CURRENT_CYCLE">⚡ Chu kỳ sao kê hiện tại</option>
         <option value="ALL_TIME">♾️ Toàn bộ thời gian (Lũy kế)</option>
       `;
-      allMonths.forEach(m => {
-        monthScopeOptions += `<option value="${m}">🗓️ Tháng ${m}</option>`;
+      allCycles.forEach(cy => {
+        monthScopeOptions += `<option value="${cy}">🗓️ Chu kỳ sao kê ${cy}</option>`;
       });
       monthScopeSel.innerHTML = monthScopeOptions;
-      if (curMonthVal && (curMonthVal === 'CURRENT_CYCLE' || curMonthVal === 'ALL_TIME' || allMonths.includes(curMonthVal))) {
+      if (curMonthVal && (curMonthVal === 'CURRENT_CYCLE' || curMonthVal === 'ALL_TIME' || allCycles.includes(curMonthVal))) {
         monthScopeSel.value = curMonthVal;
       }
     }
@@ -1731,10 +1746,11 @@
         if (found) targetCardName = found.name;
       }
 
+      // 1. XEM CHU KỲ SAO KÊ HIỆN TẠI (Từng thẻ lấy đúng chu kỳ đang chạy của nó)
       if (selectedScopeMonth === "CURRENT_CYCLE") {
         if (selectedScopeCard === "ALL") {
           cards.forEach(c => {
-            const s = getCardCurrentStats(c);
+            const s = getCardStatsForCycle(c);
             spend += s.spend;
             cashback += s.cashback;
             fees += s.fees;
@@ -1743,30 +1759,39 @@
         } else {
           const targetCard = cards.find(c => c.id === selectedScopeCard);
           if (targetCard) {
-            const s = getCardCurrentStats(targetCard);
+            const s = getCardStatsForCycle(targetCard);
             spend = s.spend;
             cashback = s.cashback;
             fees = s.fees;
-            subBadge.innerText = `Đang xem: ${targetCard.name} | Sao kê ngày ${targetCard.statementDay}`;
+            subBadge.innerText = `Đang xem: ${targetCard.name} | Chu kỳ ${s.cycleTag} (Chốt ngày ${targetCard.statementDay})`;
           }
         }
-      } else {
-        let txs = [...historyList];
-
+      } 
+      // 2. XEM THEO TOÀN BỘ THỜI GIAN
+      else if (selectedScopeMonth === "ALL_TIME") {
+        let txs = historyList;
         if (selectedScopeCard !== "ALL") {
           txs = txs.filter(h => h.cardId === selectedScopeCard);
         }
-
-        if (selectedScopeMonth !== "ALL_TIME") {
-          txs = txs.filter(h => h.date && h.date.startsWith(selectedScopeMonth));
-          subBadge.innerText = `Đang xem: ${targetCardName} | Tháng ${selectedScopeMonth}`;
-        } else {
-          subBadge.innerText = `Đang xem: ${targetCardName} | Toàn bộ lịch sử`;
-        }
+        spend = txs.reduce((sum, h) => sum + h.amount, 0);
+        cashback = txs.reduce((sum, h) => sum + h.cashback, 0);
+        fees = txs.reduce((sum, h) => sum + (h.fee || 0), 0);
+        subBadge.innerText = `Đang xem: ${targetCardName} | Toàn bộ lịch sử`;
+      } 
+      // 3. XEM THEO MỘT CHU KỲ SAO KÊ CỤ THỂ (VD: 2026-11, 2026-10)
+      else {
+        const targetCycle = selectedScopeMonth;
+        const txs = historyList.filter(h => {
+          if (selectedScopeCard !== "ALL" && h.cardId !== selectedScopeCard) return false;
+          const card = cards.find(c => c.id === h.cardId);
+          const cTag = h.cycleTag || (card ? getCycleTag(h.date, card.statementDay) : '');
+          return cTag === targetCycle;
+        });
 
         spend = txs.reduce((sum, h) => sum + h.amount, 0);
         cashback = txs.reduce((sum, h) => sum + h.cashback, 0);
         fees = txs.reduce((sum, h) => sum + (h.fee || 0), 0);
+        subBadge.innerText = `Đang xem: ${targetCardName} | Chu kỳ sao kê ${targetCycle}`;
       }
 
       const netProfit = cashback - fees;
@@ -1791,15 +1816,19 @@
     function updateFilterDropdowns() {
       const monthSel = document.getElementById('filterMonth');
       const curVal = monthSel.value;
-      const allMonths = [...new Set(historyList.map(h => h.date ? h.date.slice(0, 7) : ''))].filter(Boolean);
-      allMonths.sort().reverse();
+      
+      const allCycles = [...new Set(historyList.map(h => {
+        const card = cards.find(c => c.id === h.cardId);
+        return h.cycleTag || (card ? getCycleTag(h.date, card.statementDay) : '');
+      }))].filter(Boolean);
+      allCycles.sort().reverse();
 
-      let monthOptions = `<option value="ALL">Tất cả các tháng (Lịch sử)</option>`;
-      allMonths.forEach(m => {
-        monthOptions += `<option value="${m}">Tháng ${m}</option>`;
+      let monthOptions = `<option value="ALL">Tất cả các chu kỳ</option>`;
+      allCycles.forEach(cy => {
+        monthOptions += `<option value="${cy}">Chu kỳ sao kê ${cy}</option>`;
       });
       monthSel.innerHTML = monthOptions;
-      if (allMonths.includes(curVal) || curVal === 'ALL') {
+      if (allCycles.includes(curVal) || curVal === 'ALL') {
         monthSel.value = curVal;
       }
 
@@ -1814,14 +1843,18 @@
     }
 
     function applyFilters() {
-      const selectedMonth = document.getElementById('filterMonth').value;
+      const selectedCycle = document.getElementById('filterMonth').value;
       const selectedCardId = document.getElementById('filterCard').value;
       const selectedType = document.getElementById('filterType').value;
 
       let filtered = [...historyList];
 
-      if (selectedMonth !== "ALL") {
-        filtered = filtered.filter(h => h.date && h.date.startsWith(selectedMonth));
+      if (selectedCycle !== "ALL") {
+        filtered = filtered.filter(h => {
+          const card = cards.find(c => c.id === h.cardId);
+          const cTag = h.cycleTag || (card ? getCycleTag(h.date, card.statementDay) : '');
+          return cTag === selectedCycle;
+        });
       }
       if (selectedCardId !== "ALL") {
         filtered = filtered.filter(h => h.cardId === selectedCardId);
@@ -1838,7 +1871,7 @@
       const fNet = fCashback - fFees;
 
       const badgeEl = document.getElementById('filteredStatsBadge');
-      if (selectedMonth !== "ALL" || selectedCardId !== "ALL" || selectedType !== "ALL") {
+      if (selectedCycle !== "ALL" || selectedCardId !== "ALL" || selectedType !== "ALL") {
         badgeEl.innerHTML = `🔍 Kết quả lọc: ${filtered.length} GD | Chi: <b>${fSpend.toLocaleString()} ₫</b> | Hoàn: <b style="color:var(--emerald)">${fCashback.toLocaleString()} ₫</b> | Lời ròng: <b style="color:${fNet>=0?'var(--emerald)':'var(--rose)'}">${fNet.toLocaleString()} ₫</b>`;
       } else {
         badgeEl.innerHTML = `Tổng ${historyList.length} giao dịch được lưu trữ`;
@@ -1857,19 +1890,23 @@
       if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:16px;">Không tìm thấy giao dịch nào phù hợp với bộ lọc.</td></tr>`;
       } else {
-        tbody.innerHTML = list.map(h => `
-          <tr>
-            <td class="mono">${h.date}</td>
-            <td><strong>${h.cardName}</strong></td>
-            <td><span style="font-size:12px; color:var(--text-muted);">${h.typeTag}</span></td>
-            <td class="mono">${h.amount.toLocaleString()} ₫</td>
-            <td class="mono" style="color:var(--emerald); font-weight:700;">+${h.cashback.toLocaleString()} ₫</td>
-            <td class="mono" style="color:var(--rose); font-weight:600;">${h.fee > 0 ? '-' + h.fee.toLocaleString() + ' ₫' : '0 ₫'}</td>
-            <td class="mono" style="font-weight:800; color:${h.net >= 0 ? 'var(--emerald)' : 'var(--rose)'};">${h.net >= 0 ? '+' : ''}${h.net.toLocaleString()} ₫</td>
-            <td><span class="mono" style="font-size:11.5px; background:#eff6ff; color:#1e40af; padding:2px 6px; border-radius:4px;">${h.cycleTag || h.date.slice(0,7)}</span></td>
-            <td><button class="btn-action-small" style="color:var(--rose);" onclick="deleteTx('${h.id}')">Xóa</button></td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = list.map(h => {
+          const card = cards.find(c => c.id === h.cardId);
+          const cTag = h.cycleTag || (card ? getCycleTag(h.date, card.statementDay) : h.date.slice(0,7));
+          return `
+            <tr>
+              <td class="mono">${h.date}</td>
+              <td><strong>${h.cardName}</strong></td>
+              <td><span style="font-size:12px; color:var(--text-muted);">${h.typeTag}</span></td>
+              <td class="mono">${h.amount.toLocaleString()} ₫</td>
+              <td class="mono" style="color:var(--emerald); font-weight:700;">+${h.cashback.toLocaleString()} ₫</td>
+              <td class="mono" style="color:var(--rose); font-weight:600;">${h.fee > 0 ? '-' + h.fee.toLocaleString() + ' ₫' : '0 ₫'}</td>
+              <td class="mono" style="font-weight:800; color:${h.net >= 0 ? 'var(--emerald)' : 'var(--rose)'};">${h.net >= 0 ? '+' : ''}${h.net.toLocaleString()} ₫</td>
+              <td><span class="mono" style="font-size:11.5px; background:#eff6ff; color:#1e40af; padding:2px 6px; border-radius:4px;">${cTag}</span></td>
+              <td><button class="btn-action-small" style="color:var(--rose);" onclick="deleteTx('${h.id}')">Xóa</button></td>
+            </tr>
+          `;
+        }).join('');
       }
     }
 
@@ -1877,7 +1914,7 @@
       // 1. Dropdown chọn thẻ khi quẹt bill
       const sel = document.getElementById('txCardSelect');
       sel.innerHTML = cards.map(c => {
-        const s = getCardCurrentStats(c);
+        const s = getCardStatsForCycle(c);
         return `<option value="${c.id}">${c.name} (${c.rate}%) ${s.cashback >= c.monthlyCap ? '[ĐÃ FULL TRẦN]' : ''}</option>`;
       }).join('');
 
@@ -1891,7 +1928,7 @@
       // 4. Render Deck Thẻ
       const container = document.getElementById('cardsContainer');
       container.innerHTML = cards.map(c => {
-        const curStats = getCardCurrentStats(c);
+        const curStats = getCardStatsForCycle(c);
         const spendPct = Math.min(100, Math.round((curStats.spend / c.minSpend) * 100));
         const capPct = Math.min(100, Math.round((curStats.cashback / c.monthlyCap) * 100));
         const isMinMet = curStats.spend >= c.minSpend;
@@ -1935,7 +1972,7 @@
               <!-- Thanh 1: Tiến độ chi tiêu tối thiểu -->
               <div class="meter-group">
                 <div class="meter-label">
-                  <span>Mốc chi tiêu tối thiểu (${spendPct}%)</span>
+                  <span>Chi tiêu kỳ ${curStats.cycleTag} (${spendPct}%)</span>
                   <span>${curStats.spend.toLocaleString()} ₫ / <span style="color:var(--text-muted)">${c.minSpend.toLocaleString()} ₫</span></span>
                 </div>
                 <div class="bar-bg">
@@ -1946,7 +1983,7 @@
               <!-- Thanh 2: Tiền hoàn tích lũy -->
               <div class="meter-group">
                 <div class="meter-label">
-                  <span>Tiền hoàn tích lũy (${capPct}%)</span>
+                  <span>Hoàn tiền kỳ ${curStats.cycleTag} (${capPct}%)</span>
                   <span style="color: var(--emerald);">${Math.round(curStats.cashback).toLocaleString()} ₫ / <span style="color:var(--text-muted)">${c.monthlyCap.toLocaleString()} ₫</span></span>
                 </div>
                 <div class="bar-bg">
@@ -1967,7 +2004,7 @@
               <div class="card-footer">
                 <div>
                   <button class="btn-action-small" style="font-weight:700; color:var(--primary);" onclick="openEditCardModal('${c.id}')">✏️ Sửa thẻ</button>
-                  <button class="btn-action-small" style="margin-left:4px;" onclick="resetSingleCard('${c.id}')">↺ Bắt đầu kỳ sao kê mới</button>
+                  <button class="btn-action-small" style="margin-left:4px;" onclick="resetSingleCard('${c.id}')">ℹ️ Xem kỳ sao kê</button>
                   <button class="btn-action-small" style="color:var(--rose); margin-left:4px;" onclick="deleteCard('${c.id}')">Xóa</button>
                 </div>
                 <span style="font-size:12px; color:var(--text-muted);">
